@@ -14,9 +14,9 @@ RESOURCE_FILE = os.path.join(DATA_DIR, 'ResourceSheet.xlsx')
 WORKITEM_FILE = os.path.join(DATA_DIR, 'WorkItem.xlsx')
 
 # Default hours per day
-DEF_GREEN  = 6
-DEF_YELLOW = 3
-DEF_RED    = 0
+DEF_WORKING = 6
+DEF_YELLOW  = 3
+DEF_RED     = 0
 
 def ensure_files():
     """Create Excel files with required sheets if they don't exist."""
@@ -24,7 +24,7 @@ def ensure_files():
 
     if not os.path.exists(RESOURCE_FILE):
         df_res = pd.DataFrame(columns=[
-            'ResourceId', 'ResourceName', 'WorkingTime'
+            'ResourceId', 'ResourceName', 'WorkingHrs'
         ])
         df_timeoff = pd.DataFrame(columns=['ResourceId', 'TimeOffDate'])
         df_hol = pd.DataFrame(columns=['HolidayDate'])
@@ -47,7 +47,7 @@ def load_resources():
         RESOURCE_FILE,
         sheet_name='Resource',
         dtype={'ResourceId': str, 'ResourceName': str,
-               'WorkingTime': int}
+               'WorkingHrs': int}
     )
 
 
@@ -153,7 +153,7 @@ def available_hours(resource_id, start_dt, end_dt, df_res):
     timeoff_df = load_timeoff()
     hols   = load_holidays()
     row    = df_res.set_index('ResourceId').loc[resource_id]
-    green  = int(row['WorkingTime'])
+    workinghrs  = int(row['WorkingHrs'])
 
     total = 0
     curr  = start_dt.date()
@@ -163,7 +163,7 @@ def available_hours(resource_id, start_dt, end_dt, df_res):
                              & (timeoff_df['TimeOffDate']==curr)).any():
             total += red
         else:
-            total += green
+            total += workinghrs
         curr += timedelta(days=1)
     return total
 
@@ -202,9 +202,7 @@ def add_resource():
         new = {
             'ResourceId':   request.form['res_id'].strip(),
             'ResourceName': request.form['res_name'].strip(),
-            'GreenTime':    int(request.form.get('green') or DEF_GREEN),
-            'YellowTime':   int(request.form.get('yellow') or DEF_YELLOW),
-            'RedTime':      int(request.form.get('red') or DEF_RED)
+            'WorkingHrs':    int(request.form.get('workinghrs') or DEF_WORKING)
         }
         df_res = pd.concat([df_res, pd.DataFrame([new])], ignore_index=True)
         save_resources(df_res, df_timeoff, df_hol)
@@ -217,7 +215,6 @@ def add_resource():
 def view_holidays():
     hols = load_holidays()
     return render_template('holidays.html', holidays=hols)
-
 
 
 @app.route('/project', methods=['GET','POST'])

@@ -3,14 +3,12 @@
 <h2>Resources</h2>
 <a href="{{ url_for('add_resource') }}">Add Resource</a>
 <table>
-  <tr><th>ID</th><th>Name</th><th>Green</th><th>Yellow</th><th>Red</th></tr>
+  <tr><th>ID</th><th>Name</th><th>WorkingHrs</th></tr>
   {% for r in resources %}
   <tr>
     <td>{{ r.ResourceId }}</td>
     <td>{{ r.ResourceName }}</td>
-    <td>{{ r.GreenTime }}</td>
-    <td>{{ r.YellowTime }}</td>
-    <td>{{ r.RedTime }}</td>
+    <td>{{ r.WorkingHrs }}</td>
   </tr>
   {% endfor %}
 </table>
