@@ -66,20 +66,23 @@ def load_timeoff():
             pd.to_datetime(df['TimeOffDate'], errors='coerce')
               .dt.date
         )
+    # Drop any WorkingHrs column stored in the sheet to avoid duplicates
+    if 'WorkingHrs' in df.columns:
+        df = df.drop(columns=['WorkingHrs'])
     return df.dropna(subset=['TimeOffDate'])
 
 @app.route('/timeoff')
 def view_timeoff():
     df_timeoff = load_timeoff()
     df_res = load_resources()
-    # Merge to pull in ResourceName & working hours
-    df = pd.merge(
-        df_timeoff,
-        df_res,
+    # Merge to pull in ResourceName & WorkingHrs from the Resource sheet
+    df = df_timeoff.merge(
+        df_res[['ResourceId', 'ResourceName', 'WorkingHrs']],
         on='ResourceId',
         how='left'
-    ).sort_values(['ResourceId','TimeOffDate'])
-    records = df.to_dict('records')
+    )
+    df = df[['ResourceId', 'ResourceName', 'WorkingHrs', 'TimeOffDate']]
+    records = df.sort_values(['ResourceId', 'TimeOffDate']).to_dict('records')
     return render_template('timeoff.html', timeoff=records)
 
 @app.route('/add_timeoff', methods=['GET','POST'])
@@ -154,6 +157,7 @@ def available_hours(resource_id, start_dt, end_dt, df_res):
     hols   = load_holidays()
     row    = df_res.set_index('ResourceId').loc[resource_id]
     workinghrs  = int(row['WorkingHrs'])
+    red = DEF_RED
 
     total = 0
     curr  = start_dt.date()

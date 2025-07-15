@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Add TimeOff</h2>
+<form method="post">
+  <label>Resource:
+    <select name="resource_id">
+      {% for r in resources %}
+        <option value="{{ r.ResourceId }}">{{ r.ResourceId }} - {{ r.ResourceName }}</option>
+      {% endfor %}
+    </select>
+  </label><br>
+  <label>Date: <input name="timeoff_date" type="date" required></label><br>
+  <button type="submit">Save</button>
+</form>
+{% endblock %}
