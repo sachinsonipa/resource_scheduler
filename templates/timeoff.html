@@ -1,12 +1,12 @@
 {% extends 'base.html' %}
 {% block content %}
-<h2>PTO</h2>
+<h2>TimeOff</h2>
 <table>
-  <tr><th>ResourceId</th><th>PTO Date</th></tr>
-  {% for p in pto %}
+  <tr><th>ResourceId</th><th>TimeOff Date</th></tr>
+  {% for p in timeoff %}
   <tr>
     <td>{{ p.ResourceId }}</td>
-    <td>{{ p.PTODate }}</td>
+    <td>{{ p.TimeOffDate }}</td>
   </tr>
   {% endfor %}
 </table>

@@ -2,6 +2,8 @@ import os
 from flask import Flask, render_template, request, redirect, url_for, flash
 import pandas as pd
 from datetime import datetime, timedelta
+# ─── Imports & existing code above ───
+
 
 app = Flask(__name__)
 app.secret_key = 'replace-with-a-secure-random-key'
@@ -22,13 +24,13 @@ def ensure_files():
 
     if not os.path.exists(RESOURCE_FILE):
         df_res = pd.DataFrame(columns=[
-            'ResourceId', 'ResourceName', 'GreenTime', 'YellowTime', 'RedTime'
+            'ResourceId', 'ResourceName', 'WorkingTime'
         ])
-        df_pto = pd.DataFrame(columns=['ResourceId', 'PTODate'])
+        df_timeoff = pd.DataFrame(columns=['ResourceId', 'TimeOffDate'])
         df_hol = pd.DataFrame(columns=['HolidayDate'])
         with pd.ExcelWriter(RESOURCE_FILE, engine='openpyxl') as writer:
             df_res.to_excel(writer, sheet_name='Resource', index=False)
-            df_pto.to_excel(writer, sheet_name='PTO', index=False)
+            df_timeoff.to_excel(writer, sheet_name='TimeOff', index=False)
             df_hol.to_excel(writer, sheet_name='Holiday', index=False)
 
     if not os.path.exists(WORKITEM_FILE):
@@ -45,21 +47,68 @@ def load_resources():
         RESOURCE_FILE,
         sheet_name='Resource',
         dtype={'ResourceId': str, 'ResourceName': str,
-               'GreenTime': int, 'YellowTime': int, 'RedTime': int}
+               'WorkingTime': int}
     )
 
-def load_pto():
-    """Read the PTO sheet and coerce PTODate to date."""
+
+
+# … your ensure_files(), load_resources(), load_holidays(), save_resources() etc.
+
+def load_timeoff():
+    """Return TimeOff DataFrame with ResourceId and TimeOffDate as date."""
     df = pd.read_excel(
         RESOURCE_FILE,
-        sheet_name='PTO',
-        dtype={'ResourceId': str, 'PTODate': object}
+        sheet_name='TimeOff',
+        dtype={'ResourceId': str, 'TimeOffDate': object}
     )
-    if 'PTODate' in df:
-        df['PTODate'] = pd.to_datetime(
-            df['PTODate'], errors='coerce'
-        ).dt.date
-    return df.dropna(subset=['PTODate'])
+    if 'TimeOffDate' in df.columns:
+        df['TimeOffDate'] = (
+            pd.to_datetime(df['TimeOffDate'], errors='coerce')
+              .dt.date
+        )
+    return df.dropna(subset=['TimeOffDate'])
+
+@app.route('/timeoff')
+def view_timeoff():
+    df_timeoff = load_timeoff()
+    df_res = load_resources()
+    # Merge to pull in ResourceName & working hours
+    df = pd.merge(
+        df_timeoff,
+        df_res,
+        on='ResourceId',
+        how='left'
+    ).sort_values(['ResourceId','TimeOffDate'])
+    records = df.to_dict('records')
+    return render_template('timeoff.html', timeoff=records)
+
+@app.route('/add_timeoff', methods=['GET','POST'])
+def add_timeoff():
+    df_res = load_resources()
+    df_timeoff = load_timeoff()
+    df_hol = pd.DataFrame({'HolidayDate': load_holidays()})
+
+    if request.method == 'POST':
+        rid  = request.form['resource_id']
+        date = request.form['timeoff_date']
+        try:
+            timeoff_date = datetime.fromisoformat(date).date()
+        except Exception:
+            flash("Invalid date format.", 'error')
+            return redirect(url_for('add_timeoff'))
+
+        # append new TimeOff row
+        new = {'ResourceId': rid, 'TimeOffDate': timeoff_date}
+        df_timeoff = pd.concat([df_timeoff, pd.DataFrame([new])], ignore_index=True)
+
+        # save back
+        save_resources(df_res, df_timeoff, df_hol)
+        flash(f"TimeOff added for {rid} on {timeoff_date}", 'success')
+        return redirect(url_for('view_timeoff'))
+
+    # GET: show form
+    resources = df_res.to_dict('records')
+    return render_template('add_timeoff.html', resources=resources)
 
 def load_holidays():
     """Read the Holiday sheet and return a list of dates."""
@@ -85,11 +134,11 @@ def load_workitems():
         dtype={'AssignedResource': str}
     )
 
-def save_resources(df_res, df_pto, df_hol):
+def save_resources(df_res, df_timeoff, df_hol):
     """Overwrite the ResourceSheet.xlsx with updated sheets."""
     with pd.ExcelWriter(RESOURCE_FILE, engine='openpyxl', mode='w') as writer:
         df_res.to_excel(writer, sheet_name='Resource', index=False)
-        df_pto.to_excel(writer, sheet_name='PTO',      index=False)
+        df_timeoff.to_excel(writer, sheet_name='TimeOff', index=False)
         df_hol.to_excel(writer, sheet_name='Holiday',  index=False)
 
 def save_workitems(df_wi):
@@ -99,21 +148,19 @@ def save_workitems(df_wi):
 def available_hours(resource_id, start_dt, end_dt, df_res):
     """
     Sum available hours for a resource between two dates,
-    skipping PTO and holidays.
+    skipping TimeOff and holidays.
     """
-    pto_df = load_pto()
+    timeoff_df = load_timeoff()
     hols   = load_holidays()
     row    = df_res.set_index('ResourceId').loc[resource_id]
-    green  = int(row['GreenTime'])
-    yellow = int(row['YellowTime'])
-    red    = int(row['RedTime'])
+    green  = int(row['WorkingTime'])
 
     total = 0
     curr  = start_dt.date()
     end   = end_dt.date()
     while curr <= end:
-        if curr in hols or ((pto_df['ResourceId']==resource_id)
-                             & (pto_df['PTODate']==curr)).any():
+        if curr in hols or ((timeoff_df['ResourceId']==resource_id)
+                             & (timeoff_df['TimeOffDate']==curr)).any():
             total += red
         else:
             total += green
@@ -149,7 +196,7 @@ def view_resources():
 def add_resource():
     if request.method == 'POST':
         df_res = load_resources()
-        df_pto = load_pto()
+        df_timeoff = load_timeoff()
         df_hol = pd.DataFrame({'HolidayDate': load_holidays()})
 
         new = {
@@ -160,7 +207,7 @@ def add_resource():
             'RedTime':      int(request.form.get('red') or DEF_RED)
         }
         df_res = pd.concat([df_res, pd.DataFrame([new])], ignore_index=True)
-        save_resources(df_res, df_pto, df_hol)
+        save_resources(df_res, df_timeoff, df_hol)
         flash(f"Resource {new['ResourceId']} added.", 'success')
         return redirect(url_for('view_resources'))
 
@@ -171,10 +218,7 @@ def view_holidays():
     hols = load_holidays()
     return render_template('holidays.html', holidays=hols)
 
-@app.route('/pto')
-def view_pto():
-    df = load_pto()
-    return render_template('pto.html', pto=df.to_dict('records'))
+
 
 @app.route('/project', methods=['GET','POST'])
 def project_form():
