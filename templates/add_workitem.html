@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block content %}
+  <h2>Add WorkItem</h2>
+  <form method="post">
+    <label>Task Name: <input name="name" required></label><br>
+    <label>Estimate (hrs): <input name="estimate" type="number" required></label><br>
+    <label>Resource:
+      <select name="resource_id">
+        {% for r in resources %}<option>{{ r }}</option>{% endfor %}
+      </select>
+    </label><br>
+    <button type="submit">Save</button>
+  </form>
+{% endblock %}

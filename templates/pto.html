@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>PTO</h2>
+<table>
+  <tr><th>ResourceId</th><th>PTO Date</th></tr>
+  {% for p in pto %}
+  <tr>
+    <td>{{ p.ResourceId }}</td>
+    <td>{{ p.PTODate }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

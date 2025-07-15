@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Holidays</h2>
+<ul>
+  {% for d in holidays %}
+    <li>{{ d }}</li>
+  {% endfor %}
+</ul>
+{% endblock %}

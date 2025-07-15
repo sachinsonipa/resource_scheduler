@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>New Project</h2>
+<form method="post">
+  <label>Project Name: <input name="name"></label><br>
+  <label>Estimate (hrs): <input name="estimate" step="0.5" required></label><br>
+  <label>Start (datetime-local): <input name="proj_start" type="datetime-local" required></label><br>
+  <label>End   (datetime-local): <input name="proj_end"   type="datetime-local" required></label><br>
+  <button type="submit">Check Availability</button>
+</form>
+{% endblock %}

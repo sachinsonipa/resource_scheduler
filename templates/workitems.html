@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>WorkItems</h2>
+<table>
+  <tr>
+    <th>ID</th><th>Project</th><th>Est</th>
+    <th>Start</th><th>End</th>
+    <th>Resource</th><th>Assigned At</th><th>Status</th>
+  </tr>
+  {% for w in workitems %}
+  <tr>
+    <td>{{ w.WorkId }}</td>
+    <td>{{ w.ProjectName }}</td>
+    <td>{{ w.Estimate }}</td>
+    <td>{{ w.ProjStart }}</td>
+    <td>{{ w.ProjEnd }}</td>
+    <td>{{ w.AssignedResource }}</td>
+    <td>{{ w.AssignDatetime }}</td>
+    <td>{{ w.Status }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}
