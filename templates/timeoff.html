@@ -3,11 +3,12 @@
 <h2>TimeOff</h2>
 <a href="{{ url_for('add_timeoff') }}">Add TimeOff</a>
 <table>
-  <tr><th>ResourceId</th><th>TimeOff Date</th></tr>
+  <tr><th>ResourceId</th><th>TimeOff Date</th><th>WorkingHrs</th></tr>
   {% for p in timeoff %}
   <tr>
     <td>{{ p.ResourceId }}</td>
     <td>{{ p.TimeOffDate }}</td>
+    <td>{{ p.WorkingHrs }}</td>
   </tr>
   {% endfor %}
 </table>

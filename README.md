@@ -4,7 +4,7 @@
 This Flask-based app allows you to:
 
 - Manage Resources with daily work hour limits (WorkingHrs)
-- Record TimeOff days for each resource
+- Record TimeOff days for each resource, including partial-day hours
 - Add Work Items with estimated hours and a preferred resource
 - Automatically compute expected end date and task status (On Track, At Risk, Very Risky)
 - Store and retrieve data using Excel (`ResourceSheet.xlsx`)

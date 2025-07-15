@@ -26,7 +26,7 @@ def ensure_files():
         df_res = pd.DataFrame(columns=[
             'ResourceId', 'ResourceName', 'WorkingHrs'
         ])
-        df_timeoff = pd.DataFrame(columns=['ResourceId', 'TimeOffDate'])
+        df_timeoff = pd.DataFrame(columns=['ResourceId', 'TimeOffDate', 'WorkingHrs'])
         df_hol = pd.DataFrame(columns=['HolidayDate'])
         with pd.ExcelWriter(RESOURCE_FILE, engine='openpyxl') as writer:
             df_res.to_excel(writer, sheet_name='Resource', index=False)
@@ -55,17 +55,20 @@ def load_resources():
 # … your ensure_files(), load_resources(), load_holidays(), save_resources() etc.
 
 def load_timeoff():
-    """Return TimeOff DataFrame with ResourceId and TimeOffDate as date."""
+    """Return TimeOff DataFrame with ResourceId, TimeOffDate and WorkingHrs."""
     df = pd.read_excel(
         RESOURCE_FILE,
         sheet_name='TimeOff',
-        dtype={'ResourceId': str, 'TimeOffDate': object}
+        dtype={'ResourceId': str, 'TimeOffDate': object, 'WorkingHrs': float}
     )
     if 'TimeOffDate' in df.columns:
         df['TimeOffDate'] = (
             pd.to_datetime(df['TimeOffDate'], errors='coerce')
               .dt.date
         )
+    if 'WorkingHrs' not in df.columns:
+        df['WorkingHrs'] = 0
+    df['WorkingHrs'] = df['WorkingHrs'].fillna(0).astype(float)
     return df.dropna(subset=['TimeOffDate'])
 
 @app.route('/timeoff')
@@ -91,6 +94,7 @@ def add_timeoff():
     if request.method == 'POST':
         rid  = request.form['resource_id']
         date = request.form['timeoff_date']
+        whrs = request.form.get('workinghrs')
         try:
             timeoff_date = datetime.fromisoformat(date).date()
         except Exception:
@@ -98,7 +102,16 @@ def add_timeoff():
             return redirect(url_for('add_timeoff'))
 
         # append new TimeOff row
-        new = {'ResourceId': rid, 'TimeOffDate': timeoff_date}
+        try:
+            workinghrs = float(whrs) if whrs not in (None, '') else 0
+        except ValueError:
+            flash("Working hours must be a number.", 'error')
+            return redirect(url_for('add_timeoff'))
+        new = {
+            'ResourceId': rid,
+            'TimeOffDate': timeoff_date,
+            'WorkingHrs': workinghrs,
+        }
         df_timeoff = pd.concat([df_timeoff, pd.DataFrame([new])], ignore_index=True)
 
         # save back
@@ -159,11 +172,18 @@ def available_hours(resource_id, start_dt, end_dt, df_res):
     curr  = start_dt.date()
     end   = end_dt.date()
     while curr <= end:
-        if curr in hols or ((timeoff_df['ResourceId']==resource_id)
-                             & (timeoff_df['TimeOffDate']==curr)).any():
-            total += red
+        if curr in hols:
+            day_hours = 0
         else:
-            total += workinghrs
+            mask = (
+                (timeoff_df['ResourceId'] == resource_id) &
+                (timeoff_df['TimeOffDate'] == curr)
+            )
+            if mask.any():
+                day_hours = float(timeoff_df.loc[mask, 'WorkingHrs'].iloc[0])
+            else:
+                day_hours = workinghrs
+        total += day_hours
         curr += timedelta(days=1)
     return total
 
