@@ -66,9 +66,6 @@ def load_timeoff():
             pd.to_datetime(df['TimeOffDate'], errors='coerce')
               .dt.date
         )
-    # Drop any WorkingHrs column stored in the sheet to avoid duplicates
-    if 'WorkingHrs' in df.columns:
-        df = df.drop(columns=['WorkingHrs'])
     return df.dropna(subset=['TimeOffDate'])
 
 @app.route('/timeoff')
@@ -77,7 +74,7 @@ def view_timeoff():
     df_res = load_resources()
     # Merge to pull in ResourceName & WorkingHrs from the Resource sheet
     df = df_timeoff.merge(
-        df_res[['ResourceId', 'ResourceName', 'WorkingHrs']],
+        df_res[['ResourceId', 'ResourceName']],
         on='ResourceId',
         how='left'
     )
