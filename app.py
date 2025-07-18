@@ -38,7 +38,7 @@ def ensure_files():
             'WorkId', 'ProjectName', 'Estimate',
             'ProjStart', 'ProjEnd',
             'AssignedResource', 'AssignDatetime', 'Status',
-            'RemainingHours'
+            'RemainingHours', 'Notes'
         ])
         df_wi.to_excel(WORKITEM_FILE, index=False)
 
@@ -136,6 +136,8 @@ def load_workitems():
     )
     if 'RemainingHours' not in df.columns:
         df['RemainingHours'] = df['Estimate']
+    if 'Notes' not in df.columns:
+        df['Notes'] = ''
     return df
 
 def save_resources(df_res, df_timeoff, df_hol):
@@ -348,18 +350,78 @@ def edit_workitem(work_id):
             return redirect(url_for('edit_workitem', work_id=work_id))
 
         df_wi.at[idx, 'RemainingHours'] = remaining
+        df_wi.at[idx, 'Notes'] = request.form.get('notes', row.get('Notes', ''))
 
-        df_res = load_resources()
-        avail = available_hours(
-            row['AssignedResource'], datetime.now(), row['ProjEnd'], df_res
-        )
-        df_wi.at[idx, 'Status'] = assess_status(avail, remaining)
+        if df_wi.at[idx, 'Status'] not in ('Paused', 'Completed'):
+            df_res = load_resources()
+            avail = available_hours(
+                row['AssignedResource'], datetime.now(), row['ProjEnd'], df_res
+            )
+            df_wi.at[idx, 'Status'] = assess_status(avail, remaining)
 
         save_workitems(df_wi)
         flash('WorkItem updated.', 'success')
         return redirect(url_for('view_workitems'))
 
     return render_template('edit_workitem.html', item=row)
+
+
+@app.route('/add_note/<int:work_id>', methods=['GET', 'POST'])
+def add_note(work_id):
+    df_wi = load_workitems()
+    if work_id not in df_wi['WorkId'].values:
+        flash('WorkItem not found.', 'error')
+        return redirect(url_for('view_workitems'))
+
+    idx = df_wi.index[df_wi['WorkId'] == work_id][0]
+    row = df_wi.loc[idx]
+
+    if request.method == 'POST':
+        df_wi.at[idx, 'Notes'] = request.form.get('notes', '')
+        save_workitems(df_wi)
+        flash('Notes updated.', 'success')
+        return redirect(url_for('view_workitems'))
+
+    return render_template('add_note.html', item=row)
+
+
+@app.route('/pause_workitem/<int:work_id>')
+def pause_workitem(work_id):
+    df_wi = load_workitems()
+    if work_id in df_wi['WorkId'].values:
+        idx = df_wi.index[df_wi['WorkId'] == work_id][0]
+        df_wi.at[idx, 'Status'] = 'Paused'
+        save_workitems(df_wi)
+        flash('WorkItem paused.', 'success')
+    else:
+        flash('WorkItem not found.', 'error')
+    return redirect(url_for('view_workitems'))
+
+
+@app.route('/complete_workitem/<int:work_id>')
+def complete_workitem(work_id):
+    df_wi = load_workitems()
+    if work_id in df_wi['WorkId'].values:
+        idx = df_wi.index[df_wi['WorkId'] == work_id][0]
+        df_wi.at[idx, 'Status'] = 'Completed'
+        df_wi.at[idx, 'RemainingHours'] = 0
+        save_workitems(df_wi)
+        flash('WorkItem completed.', 'success')
+    else:
+        flash('WorkItem not found.', 'error')
+    return redirect(url_for('view_workitems'))
+
+
+@app.route('/delete_workitem/<int:work_id>')
+def delete_workitem(work_id):
+    df_wi = load_workitems()
+    if work_id in df_wi['WorkId'].values:
+        df_wi = df_wi[df_wi['WorkId'] != work_id]
+        save_workitems(df_wi)
+        flash('WorkItem deleted.', 'success')
+    else:
+        flash('WorkItem not found.', 'error')
+    return redirect(url_for('view_workitems'))
 
 @app.route('/workitems')
 def view_workitems():
@@ -394,6 +456,8 @@ def view_workitems():
     # compute status based on remaining hours and availability
     df_res_all = load_resources()
     def _calc_status(row):
+        if row['Status'] in ('Paused', 'Completed'):
+            return row['Status']
         avail = available_hours(row['AssignedResource'], datetime.now(), row['ProjEnd'], df_res_all)
         return assess_status(avail, row['RemainingHours'])
 
