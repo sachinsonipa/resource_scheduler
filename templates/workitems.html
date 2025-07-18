@@ -30,7 +30,7 @@
   <tr>
     <th>ID</th><th>Project</th><th>Est</th>
     <th>Start</th><th>End</th>
-    <th>Resource</th><th>Assigned At</th><th>Remaining</th><th>Status</th><th></th>
+    <th>Resource</th><th>Assigned At</th><th>Remaining</th><th>Status</th><th>Notes</th><th></th>
   </tr>
   {% for w in workitems %}
   <tr>
@@ -43,6 +43,17 @@
     <td>{{ w.AssignDatetime }}</td>
     <td>{{ w.RemainingHours }}</td>
     <td>{{ w.Status }}</td>
+    <td>
+      {% if w.Notes %}
+      <details>
+        {% set lines = w.Notes.split('\n') %}
+        <summary>{{ lines[0] }}</summary>
+        {% for line in lines[1:] %}
+          <div>{{ line }}</div>
+        {% endfor %}
+      </details>
+      {% else %}-{% endif %}
+    </td>
     <td><a class="btn btn-sm btn-secondary" href="{{ url_for('edit_workitem', work_id=w.WorkId) }}">Edit</a></td>
   </tr>
   {% endfor %}
