@@ -1,6 +1,32 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>WorkItems</h2>
+
+<form method="get" class="row g-2 mb-3">
+  <div class="col-sm-4">
+    <input type="text" name="search" value="{{ search }}" placeholder="Search" class="form-control">
+  </div>
+  <div class="col-sm-3">
+    <select name="resource" class="form-select">
+      <option value="">All Resources</option>
+      {% for r in resources %}
+        <option value="{{ r.ResourceId }}" {% if r.ResourceId == selected_resource %}selected{% endif %}>{{ r.ResourceName }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-sm-3">
+    <select name="sort" class="form-select">
+      <option value="">Sort By</option>
+      <option value="start" {% if sort=='start' %}selected{% endif %}>Start</option>
+      <option value="end" {% if sort=='end' %}selected{% endif %}>End</option>
+      <option value="resource" {% if sort=='resource' %}selected{% endif %}>Resource</option>
+    </select>
+  </div>
+  <div class="col-sm-2">
+    <button type="submit" class="btn btn-primary w-100">Apply</button>
+  </div>
+</form>
+
 <table class="table table-bordered table-striped mt-3">
   <tr>
     <th>ID</th><th>Project</th><th>Est</th>
@@ -14,7 +40,7 @@
     <td>{{ w.Estimate }}</td>
     <td>{{ w.ProjStart }}</td>
     <td>{{ w.ProjEnd }}</td>
-    <td>{{ w.AssignedResource }}</td>
+    <td>{{ w.ResourceName or w.AssignedResource }}</td>
     <td>{{ w.AssignDatetime }}</td>
     <td>{{ w.Status }}</td>
   </tr>
