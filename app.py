@@ -38,7 +38,7 @@ def ensure_files():
             'WorkId', 'ProjectName', 'Estimate',
             'ProjStart', 'ProjEnd',
             'AssignedResource', 'AssignDatetime', 'Status',
-            'RemainingHours'
+            'RemainingHours', 'Notes'
         ])
         df_wi.to_excel(WORKITEM_FILE, index=False)
 
@@ -136,6 +136,8 @@ def load_workitems():
     )
     if 'RemainingHours' not in df.columns:
         df['RemainingHours'] = df['Estimate']
+    if 'Notes' not in df.columns:
+        df['Notes'] = ''
     return df
 
 def save_resources(df_res, df_timeoff, df_hol):
@@ -263,6 +265,7 @@ def project_form():
 
         ps = request.form['proj_start']
         pe = request.form['proj_end']
+        notes = request.form.get('notes', '').strip()
         try:
             ps_dt = datetime.fromisoformat(ps)
             pe_dt = datetime.fromisoformat(pe)
@@ -293,7 +296,8 @@ def project_form():
             estimate=estimate,
             proj_start=ps,
             proj_end=pe,
-            statuses=statuses
+            statuses=statuses,
+            notes=notes
         )
 
     today = datetime.today().date().isoformat()
@@ -310,6 +314,7 @@ def assign():
     proj_end   = datetime.fromisoformat(request.form['proj_end'])
     rid        = request.form['resource_id']
     status     = request.form['status']
+    notes      = request.form.get('notes', '').strip()
     assign_dt  = datetime.now()
 
     new = {
@@ -321,7 +326,8 @@ def assign():
         'AssignedResource': rid,
         'AssignDatetime':   assign_dt,
         'Status':           status,
-        'RemainingHours':   estimate
+        'RemainingHours':   estimate,
+        'Notes':            f"{assign_dt.date()}: {notes}" if notes else ''
     }
 
     df_wi = pd.concat([df_wi, pd.DataFrame([new])], ignore_index=True)
@@ -347,7 +353,17 @@ def edit_workitem(work_id):
             flash('Remaining hours must be a number.', 'error')
             return redirect(url_for('edit_workitem', work_id=work_id))
 
+        note = request.form.get('note', '').strip()
+
         df_wi.at[idx, 'RemainingHours'] = remaining
+
+        if note:
+            entry = f"{datetime.now().date()}: {note}"
+            existing = df_wi.at[idx, 'Notes']
+            if pd.isna(existing) or not existing:
+                df_wi.at[idx, 'Notes'] = entry
+            else:
+                df_wi.at[idx, 'Notes'] = f"{existing}\n{entry}"
 
         df_res = load_resources()
         avail = available_hours(
