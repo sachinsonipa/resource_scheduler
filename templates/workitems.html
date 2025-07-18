@@ -2,7 +2,7 @@
 {% block content %}
 
 <form method="get" class="row g-2 mb-3">
-  <div class="col-sm-4">
+  <div class="col-sm-3">
     <input type="text" name="search" value="{{ search }}" placeholder="Search" class="form-control">
   </div>
   <div class="col-sm-3">
@@ -22,6 +22,14 @@
     </select>
   </div>
   <div class="col-sm-2">
+    <select name="status" class="form-select">
+      <option value="">All Status</option>
+      <option value="Active" {% if selected_status=='Active' %}selected{% endif %}>Active</option>
+      <option value="Paused" {% if selected_status=='Paused' %}selected{% endif %}>Paused</option>
+      <option value="Completed" {% if selected_status=='Completed' %}selected{% endif %}>Completed</option>
+    </select>
+  </div>
+  <div class="col-sm-1">
     <button type="submit" class="btn btn-primary w-100">Apply</button>
   </div>
 </form>

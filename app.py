@@ -376,13 +376,26 @@ def add_note(work_id):
     idx = df_wi.index[df_wi['WorkId'] == work_id][0]
     row = df_wi.loc[idx]
 
-    if request.method == 'POST':
-        df_wi.at[idx, 'Notes'] = request.form.get('notes', '')
-        save_workitems(df_wi)
-        flash('Notes updated.', 'success')
-        return redirect(url_for('view_workitems'))
+    existing_notes = row.get('Notes', '') or ''
 
-    return render_template('add_note.html', item=row)
+    if request.method == 'POST':
+        new_note = request.form.get('note_text', '').strip()
+        if new_note:
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
+            entry = f"{timestamp}: {new_note}"
+            if existing_notes:
+                updated = existing_notes + "\n" + entry
+            else:
+                updated = entry
+            df_wi.at[idx, 'Notes'] = updated
+            save_workitems(df_wi)
+            flash('Note added.', 'success')
+        else:
+            flash('Note cannot be empty.', 'warning')
+        return redirect(url_for('add_note', work_id=work_id))
+
+    notes_list = existing_notes.splitlines() if existing_notes else []
+    return render_template('add_note.html', item=row, notes=notes_list)
 
 
 @app.route('/pause_workitem/<int:work_id>')
@@ -445,6 +458,14 @@ def view_workitems():
     if resource_filter:
         df = df[df['AssignedResource'] == resource_filter]
 
+    status_filter = request.args.get('status', '').strip()
+    if status_filter == 'Completed':
+        df = df[df['Status'] == 'Completed']
+    elif status_filter == 'Paused':
+        df = df[df['Status'] == 'Paused']
+    elif status_filter == 'Active':
+        df = df[~df['Status'].isin(['Completed', 'Paused'])]
+
     sort_key = request.args.get('sort', '').strip()
     if sort_key == 'start':
         df = df.sort_values('ProjStart')
@@ -475,7 +496,8 @@ def view_workitems():
         resources=resources,
         search=search,
         selected_resource=resource_filter,
-        sort=sort_key
+        sort=sort_key,
+        selected_status=status_filter
     )
 
 if __name__ == '__main__':
