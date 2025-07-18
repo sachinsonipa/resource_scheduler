@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>Select Resource for {{ project_name or '(no name)' }}</h2>
-<table>
+<table class="table table-bordered table-striped mt-3">
   <tr>
     <th>ID</th><th>Name</th><th>Avail Hrs</th><th>Status</th><th>Action</th>
   </tr>
@@ -12,14 +12,14 @@
     <td>{{ s.AvailableHours }}</td>
     <td>{{ s.Status }}</td>
     <td>
-      <form action="{{ url_for('assign') }}" method="post">
+      <form action="{{ url_for('assign') }}" method="post" class="m-0">
         <input type="hidden" name="project_name" value="{{ project_name }}">
         <input type="hidden" name="estimate"      value="{{ estimate }}">
         <input type="hidden" name="proj_start"     value="{{ proj_start }}">
         <input type="hidden" name="proj_end"       value="{{ proj_end }}">
         <input type="hidden" name="resource_id"    value="{{ s.ResourceId }}">
         <input type="hidden" name="status"         value="{{ s.Status }}">
-        <button type="submit">Assign</button>
+        <button type="submit" class="btn btn-sm btn-primary">Assign</button>
       </form>
     </td>
   </tr>

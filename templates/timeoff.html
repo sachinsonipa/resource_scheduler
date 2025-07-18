@@ -1,8 +1,8 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>TimeOff</h2>
-<a href="{{ url_for('add_timeoff') }}">Add TimeOff</a>
-<table>
+<a class="btn btn-primary mb-3" href="{{ url_for('add_timeoff') }}">Add TimeOff</a>
+<table class="table table-bordered table-striped">
   <tr>
     <th>ResourceId</th>
     <th>Resource Name</th>

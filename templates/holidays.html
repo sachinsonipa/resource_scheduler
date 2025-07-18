@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>Holidays</h2>
-<ul>
+<ul class="list-group mt-3">
   {% for d in holidays %}
-    <li>{{ d }}</li>
+    <li class="list-group-item">{{ d }}</li>
   {% endfor %}
 </ul>
 {% endblock %}

@@ -1,14 +1,24 @@
 {% extends 'base.html' %}
 {% block content %}
   <h2>Add WorkItem</h2>
-  <form method="post">
-    <label>Task Name: <input name="name" required></label><br>
-    <label>Estimate (hrs): <input name="estimate" type="number" required></label><br>
-    <label>Resource:
-      <select name="resource_id">
-        {% for r in resources %}<option>{{ r }}</option>{% endfor %}
-      </select>
-    </label><br>
-    <button type="submit">Save</button>
+  <form method="post" class="mt-3">
+    <div class="mb-3">
+      <label class="form-label">Task Name
+        <input name="name" class="form-control" required>
+      </label>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Estimate (hrs)
+        <input name="estimate" type="number" class="form-control" required>
+      </label>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Resource
+        <select name="resource_id" class="form-select">
+          {% for r in resources %}<option>{{ r }}</option>{% endfor %}
+        </select>
+      </label>
+    </div>
+    <button type="submit" class="btn btn-primary">Save</button>
   </form>
 {% endblock %}

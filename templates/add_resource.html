@@ -1,10 +1,22 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>Add Resource</h2>
-<form method="post">
-  <label>ID:   <input name="res_id" required></label><br>
-  <label>Name: <input name="res_name" required></label><br>
-  <label>WorkingHrs:  <input name="workinghrs"  type="number"></label><br>
-  <button type="submit">Save</button>
+<form method="post" class="mt-3">
+  <div class="mb-3">
+    <label class="form-label">ID
+      <input name="res_id" class="form-control" required>
+    </label>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Name
+      <input name="res_name" class="form-control" required>
+    </label>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">WorkingHrs
+      <input name="workinghrs" type="number" class="form-control">
+    </label>
+  </div>
+  <button type="submit" class="btn btn-primary">Save</button>
 </form>
 {% endblock %}
