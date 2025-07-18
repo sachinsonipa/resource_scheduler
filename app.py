@@ -186,7 +186,8 @@ ensure_files()
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    """Default home redirects to the work item list."""
+    return redirect(url_for('view_workitems'))
 
 @app.route('/resources')
 def view_resources():
@@ -296,11 +297,48 @@ def assign():
 
 @app.route('/workitems')
 def view_workitems():
+    """Show work items with optional search, sort and filtering."""
     df = load_workitems()
+    df_res = load_resources()[['ResourceId', 'ResourceName']]
+
+    # merge so we can display ResourceName
+    df = df.merge(
+        df_res,
+        left_on='AssignedResource',
+        right_on='ResourceId',
+        how='left'
+    )
+
+    search = request.args.get('search', '').strip()
+    if search:
+        df = df[df['ProjectName'].str.contains(search, case=False, na=False)]
+
+    resource_filter = request.args.get('resource', '').strip()
+    if resource_filter:
+        df = df[df['AssignedResource'] == resource_filter]
+
+    sort_key = request.args.get('sort', '').strip()
+    if sort_key == 'start':
+        df = df.sort_values('ProjStart')
+    elif sort_key == 'end':
+        df = df.sort_values('ProjEnd')
+    elif sort_key == 'resource':
+        df = df.sort_values('ResourceName')
+
+    # format dates for display
     df['ProjStart']      = df['ProjStart'].dt.strftime('%Y-%m-%d %H:%M')
     df['ProjEnd']        = df['ProjEnd'].dt.strftime('%Y-%m-%d %H:%M')
     df['AssignDatetime'] = df['AssignDatetime'].dt.strftime('%Y-%m-%d %H:%M')
-    return render_template('workitems.html', workitems=df.to_dict('records'))
+
+    resources = df_res.to_dict('records')
+    return render_template(
+        'workitems.html',
+        workitems=df.to_dict('records'),
+        resources=resources,
+        search=search,
+        selected_resource=resource_filter,
+        sort=sort_key
+    )
 
 if __name__ == '__main__':
     app.run(debug=True)
