@@ -13,13 +13,13 @@
     </label>
   </div>
   <div class="mb-3">
-    <label class="form-label">Start
-      <input name="proj_start" type="datetime-local" class="form-control" required>
+    <label class="form-label">Start Date
+      <input name="proj_start" type="date" value="{{ today }}" class="form-control" required>
     </label>
   </div>
   <div class="mb-3">
-    <label class="form-label">End
-      <input name="proj_end" type="datetime-local" class="form-control" required>
+    <label class="form-label">Deadline Date
+      <input name="proj_end" type="date" value="{{ today }}" class="form-control" required>
     </label>
   </div>
   <button type="submit" class="btn btn-primary">Check Availability</button>

@@ -37,7 +37,8 @@ def ensure_files():
         df_wi = pd.DataFrame(columns=[
             'WorkId', 'ProjectName', 'Estimate',
             'ProjStart', 'ProjEnd',
-            'AssignedResource', 'AssignDatetime', 'Status'
+            'AssignedResource', 'AssignDatetime', 'Status',
+            'RemainingHours'
         ])
         df_wi.to_excel(WORKITEM_FILE, index=False)
 
@@ -128,11 +129,14 @@ def load_holidays():
 
 def load_workitems():
     """Read the WorkItem file with proper datetime parsing."""
-    return pd.read_excel(
+    df = pd.read_excel(
         WORKITEM_FILE,
         parse_dates=['ProjStart', 'ProjEnd', 'AssignDatetime'],
         dtype={'AssignedResource': str}
     )
+    if 'RemainingHours' not in df.columns:
+        df['RemainingHours'] = df['Estimate']
+    return df
 
 def save_resources(df_res, df_timeoff, df_hol):
     """Overwrite the ResourceSheet.xlsx with updated sheets."""
@@ -176,10 +180,10 @@ def assess_status(avail, required):
     - Insufficient otherwise
     """
     if avail >= required:
-        return 'Available'
+        return 'OnTrack'
     if avail >= required * 0.7:
-        return 'At Risk'
-    return 'Insufficient'
+        return 'AtRisk'
+    return 'OffTrack'
 
 # Initialize files on startup
 ensure_files()
@@ -217,6 +221,34 @@ def add_resource():
 def view_holidays():
     hols = load_holidays()
     return render_template('holidays.html', holidays=hols)
+
+
+@app.route('/add_holiday', methods=['GET', 'POST'])
+def add_holiday():
+    df_res = load_resources()
+    df_timeoff = load_timeoff()
+    df_hol = pd.DataFrame({'HolidayDate': load_holidays()})
+
+    if request.method == 'POST':
+        date = request.form['holiday_date']
+        try:
+            hol_date = datetime.fromisoformat(date).date()
+        except Exception:
+            flash('Invalid date format.', 'error')
+            return redirect(url_for('add_holiday'))
+
+        if hol_date in df_hol['HolidayDate'].tolist():
+            flash('Holiday already exists.', 'warning')
+        else:
+            df_hol = pd.concat([
+                df_hol,
+                pd.DataFrame([{'HolidayDate': hol_date}])
+            ], ignore_index=True)
+            save_resources(df_res, df_timeoff, df_hol)
+            flash(f'Holiday {hol_date} added.', 'success')
+        return redirect(url_for('view_holidays'))
+
+    return render_template('add_holiday.html')
 
 
 @app.route('/project', methods=['GET','POST'])
@@ -264,7 +296,8 @@ def project_form():
             statuses=statuses
         )
 
-    return render_template('project_form.html')
+    today = datetime.today().date().isoformat()
+    return render_template('project_form.html', today=today)
 
 @app.route('/assign', methods=['POST'])
 def assign():
@@ -287,13 +320,46 @@ def assign():
         'ProjEnd':          proj_end,
         'AssignedResource': rid,
         'AssignDatetime':   assign_dt,
-        'Status':           status
+        'Status':           status,
+        'RemainingHours':   estimate
     }
 
     df_wi = pd.concat([df_wi, pd.DataFrame([new])], ignore_index=True)
     save_workitems(df_wi)
     flash(f"Assigned {rid} to {name}.", 'success')
     return redirect(url_for('view_workitems'))
+
+
+@app.route('/edit_workitem/<int:work_id>', methods=['GET', 'POST'])
+def edit_workitem(work_id):
+    df_wi = load_workitems()
+    if work_id not in df_wi['WorkId'].values:
+        flash('WorkItem not found.', 'error')
+        return redirect(url_for('view_workitems'))
+
+    idx = df_wi.index[df_wi['WorkId'] == work_id][0]
+    row = df_wi.loc[idx]
+
+    if request.method == 'POST':
+        try:
+            remaining = float(request.form['remaining_hours'])
+        except ValueError:
+            flash('Remaining hours must be a number.', 'error')
+            return redirect(url_for('edit_workitem', work_id=work_id))
+
+        df_wi.at[idx, 'RemainingHours'] = remaining
+
+        df_res = load_resources()
+        avail = available_hours(
+            row['AssignedResource'], datetime.now(), row['ProjEnd'], df_res
+        )
+        df_wi.at[idx, 'Status'] = assess_status(avail, remaining)
+
+        save_workitems(df_wi)
+        flash('WorkItem updated.', 'success')
+        return redirect(url_for('view_workitems'))
+
+    return render_template('edit_workitem.html', item=row)
 
 @app.route('/workitems')
 def view_workitems():
@@ -325,9 +391,17 @@ def view_workitems():
     elif sort_key == 'resource':
         df = df.sort_values('ResourceName')
 
+    # compute status based on remaining hours and availability
+    df_res_all = load_resources()
+    def _calc_status(row):
+        avail = available_hours(row['AssignedResource'], datetime.now(), row['ProjEnd'], df_res_all)
+        return assess_status(avail, row['RemainingHours'])
+
+    df['Status'] = df.apply(_calc_status, axis=1)
+
     # format dates for display
-    df['ProjStart']      = df['ProjStart'].dt.strftime('%Y-%m-%d %H:%M')
-    df['ProjEnd']        = df['ProjEnd'].dt.strftime('%Y-%m-%d %H:%M')
+    df['ProjStart']      = df['ProjStart'].dt.strftime('%Y-%m-%d')
+    df['ProjEnd']        = df['ProjEnd'].dt.strftime('%Y-%m-%d')
     df['AssignDatetime'] = df['AssignDatetime'].dt.strftime('%Y-%m-%d %H:%M')
 
     resources = df_res.to_dict('records')
