@@ -1,8 +1,8 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>Resources</h2>
-<a href="{{ url_for('add_resource') }}">Add Resource</a>
-<table>
+<a class="btn btn-primary mb-3" href="{{ url_for('add_resource') }}">Add Resource</a>
+<table class="table table-bordered table-striped">
   <tr><th>ID</th><th>Name</th><th>WorkingHrs</th></tr>
   {% for r in resources %}
   <tr>
