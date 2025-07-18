@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>Holidays</h2>
+<a class="btn btn-primary mb-3" href="{{ url_for('add_holiday') }}">Add Holiday</a>
 <ul class="list-group mt-3">
   {% for d in holidays %}
     <li class="list-group-item">{{ d }}</li>
