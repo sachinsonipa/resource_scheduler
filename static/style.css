@@ -14,6 +14,10 @@ table {
   margin: 10px 0;
 }
 
+.table-responsive {
+  overflow-x: auto;
+}
+
 th, td {
   border: 1px solid #ddd;
   padding: 8px;
