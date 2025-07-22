@@ -1,8 +1,11 @@
 {% extends 'base.html' %}
 {% block content %}
 
-<h2 class="mb-4">Work Items</h2>
+<h2 class="mb-4">
+  {% if status == 'Completed' %}Completed Work Items{% elif status == 'Paused' %}Paused Work Items{% else %}Work Items{% endif %}
+</h2>
 <form method="get" class="row gy-2 gx-3 align-items-end mb-4">
+  {% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}
   <div class="col-sm-4">
     <input type="text" name="search" value="{{ search }}" placeholder="Search" class="form-control">
   </div>

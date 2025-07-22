@@ -377,12 +377,18 @@ def add_note(work_id):
     row = df_wi.loc[idx]
 
     if request.method == 'POST':
-        df_wi.at[idx, 'Notes'] = request.form.get('notes', '')
-        save_workitems(df_wi)
-        flash('Notes updated.', 'success')
-        return redirect(url_for('view_workitems'))
+        new_note = request.form.get('new_note', '').strip()
+        if new_note:
+            timestamp = datetime.now().strftime('%Y-%m-%d')
+            existing = str(df_wi.at[idx, 'Notes']).strip()
+            note_entry = f"{timestamp}: {new_note}"
+            df_wi.at[idx, 'Notes'] = (existing + '\n' + note_entry if existing else note_entry)
+            save_workitems(df_wi)
+            flash('Note added.', 'success')
+        return redirect(url_for('add_note', work_id=work_id))
 
-    return render_template('add_note.html', item=row)
+    notes_list = [n for n in str(row.get('Notes', '')).splitlines() if n.strip()]
+    return render_template('add_note.html', item=row, notes=notes_list)
 
 
 @app.route('/notes')
@@ -396,8 +402,20 @@ def view_notes():
         right_on='ResourceId',
         how='left'
     )
-    records = df.to_dict('records')
-    return render_template('notes.html', notes=records)
+
+    notes_records = []
+    for _, row in df.iterrows():
+        for note in str(row.get('Notes', '')).splitlines():
+            note = note.strip()
+            if note:
+                notes_records.append({
+                    'WorkId': row['WorkId'],
+                    'ProjectName': row['ProjectName'],
+                    'ResourceName': row.get('ResourceName') or row['AssignedResource'],
+                    'Note': note
+                })
+
+    return render_template('notes.html', notes=notes_records)
 
 
 @app.route('/delete_note/<int:work_id>')
@@ -451,9 +469,8 @@ def delete_workitem(work_id):
         flash('WorkItem not found.', 'error')
     return redirect(url_for('view_workitems'))
 
-@app.route('/workitems')
-def view_workitems():
-    """Show work items with optional search, sort and filtering."""
+def _render_workitems(status_filter=None):
+    """Helper to render work items with optional filtering and sorting."""
     df = load_workitems()
     df_res = load_resources()[['ResourceId', 'ResourceName']]
 
@@ -472,6 +489,9 @@ def view_workitems():
     resource_filter = request.args.get('resource', '').strip()
     if resource_filter:
         df = df[df['AssignedResource'] == resource_filter]
+
+    if status_filter:
+        df = df[df['Status'] == status_filter]
 
     sort_key = request.args.get('sort', '').strip()
     if sort_key == 'start':
@@ -503,8 +523,27 @@ def view_workitems():
         resources=resources,
         search=search,
         selected_resource=resource_filter,
-        sort=sort_key
+        sort=sort_key,
+        status=status_filter
     )
+
+
+@app.route('/workitems')
+def view_workitems():
+    """Show all work items."""
+    return _render_workitems()
+
+
+@app.route('/completed_workitems')
+def view_completed_workitems():
+    """Show completed work items."""
+    return _render_workitems(status_filter='Completed')
+
+
+@app.route('/paused_workitems')
+def view_paused_workitems():
+    """Show paused work items."""
+    return _render_workitems(status_filter='Paused')
 
 if __name__ == '__main__':
     app.run(debug=True)
