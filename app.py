@@ -506,5 +506,59 @@ def view_workitems():
         sort=sort_key
     )
 
+
+@app.route('/task_manager')
+def task_manager():
+    """Task Manager view showing only active work items."""
+    df = load_workitems()
+    df = df[~df['Status'].isin(['Paused', 'Completed'])]
+    df_res = load_resources()[['ResourceId', 'ResourceName']]
+
+    df = df.merge(
+        df_res,
+        left_on='AssignedResource',
+        right_on='ResourceId',
+        how='left'
+    )
+
+    search = request.args.get('search', '').strip()
+    if search:
+        df = df[df['ProjectName'].str.contains(search, case=False, na=False)]
+
+    resource_filter = request.args.get('resource', '').strip()
+    if resource_filter:
+        df = df[df['AssignedResource'] == resource_filter]
+
+    sort_key = request.args.get('sort', '').strip()
+    if sort_key == 'start':
+        df = df.sort_values('ProjStart')
+    elif sort_key == 'end':
+        df = df.sort_values('ProjEnd')
+    elif sort_key == 'resource':
+        df = df.sort_values('ResourceName')
+
+    df_res_all = load_resources()
+    def _calc_status(row):
+        avail = available_hours(
+            row['AssignedResource'], datetime.now(), row['ProjEnd'], df_res_all
+        )
+        return assess_status(avail, row['RemainingHours'])
+
+    df['Status'] = df.apply(_calc_status, axis=1)
+
+    df['ProjStart']      = df['ProjStart'].dt.strftime('%Y-%m-%d')
+    df['ProjEnd']        = df['ProjEnd'].dt.strftime('%Y-%m-%d')
+    df['AssignDatetime'] = df['AssignDatetime'].dt.strftime('%Y-%m-%d %H:%M')
+
+    resources = df_res.to_dict('records')
+    return render_template(
+        'task_manager.html',
+        workitems=df.to_dict('records'),
+        resources=resources,
+        search=search,
+        selected_resource=resource_filter,
+        sort=sort_key
+    )
+
 if __name__ == '__main__':
     app.run(debug=True)

@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<h2 class="mb-4">Task Manager</h2>
+<form method="get" class="row gy-2 gx-3 align-items-end mb-4">
+  <div class="col-sm-4">
+    <input type="text" name="search" value="{{ search }}" placeholder="Search" class="form-control">
+  </div>
+  <div class="col-sm-3">
+    <select name="resource" class="form-select">
+      <option value="">All Resources</option>
+      {% for r in resources %}
+        <option value="{{ r.ResourceId }}" {% if r.ResourceId == selected_resource %}selected{% endif %}>{{ r.ResourceName }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-sm-3">
+    <select name="sort" class="form-select">
+      <option value="">Sort By</option>
+      <option value="start" {% if sort=='start' %}selected{% endif %}>Start</option>
+      <option value="end" {% if sort=='end' %}selected{% endif %}>End</option>
+      <option value="resource" {% if sort=='resource' %}selected{% endif %}>Resource</option>
+    </select>
+  </div>
+  <div class="col-sm-2">
+    <button type="submit" class="btn btn-primary w-100">Apply</button>
+  </div>
+</form>
+<div class="table-responsive">
+<table class="table table-bordered table-striped table-hover">
+  <tr>
+    <th>ID</th><th>Project</th><th>Est</th>
+    <th>Start</th><th>End</th>
+    <th>Resource</th><th>Assigned At</th><th>Remaining</th><th>Status</th><th>Action</th>
+  </tr>
+  {% for w in workitems %}
+  <tr>
+    <td>{{ w.WorkId }}</td>
+    <td>{{ w.ProjectName }}</td>
+    <td>{{ w.Estimate }}</td>
+    <td>{{ w.ProjStart }}</td>
+    <td>{{ w.ProjEnd }}</td>
+    <td>{{ w.ResourceName or w.AssignedResource }}</td>
+    <td>{{ w.AssignDatetime }}</td>
+    <td>{{ w.RemainingHours }}</td>
+    <td>{{ w.Status }}</td>
+    <td class="d-flex gap-1">
+      <a class="btn btn-sm btn-secondary" title="Edit" href="{{ url_for('edit_workitem', work_id=w.WorkId) }}"><i class="bi bi-pencil"></i></a>
+      <a class="btn btn-sm btn-info" title="Note" href="{{ url_for('add_note', work_id=w.WorkId) }}"><i class="bi bi-journal-text"></i></a>
+      <a class="btn btn-sm btn-warning" title="Pause" href="{{ url_for('pause_workitem', work_id=w.WorkId) }}"><i class="bi bi-pause"></i></a>
+      <a class="btn btn-sm btn-success" title="Complete" href="{{ url_for('complete_workitem', work_id=w.WorkId) }}"><i class="bi bi-check-circle"></i></a>
+      <a class="btn btn-sm btn-danger" title="Delete" href="{{ url_for('delete_workitem', work_id=w.WorkId) }}" onclick="return confirm('Delete this item?');"><i class="bi bi-trash"></i></a>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
+{% endblock %}
