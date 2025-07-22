@@ -1,7 +1,8 @@
 {% extends 'base.html' %}
 {% block content %}
 
-<form method="get" class="row g-2 mb-3">
+<h2 class="mb-4">Work Items</h2>
+<form method="get" class="row gy-2 gx-3 align-items-end mb-4">
   <div class="col-sm-4">
     <input type="text" name="search" value="{{ search }}" placeholder="Search" class="form-control">
   </div>
@@ -25,8 +26,8 @@
     <button type="submit" class="btn btn-primary w-100">Apply</button>
   </div>
 </form>
-
-<table class="table table-bordered table-striped mt-3">
+<div class="table-responsive">
+<table class="table table-bordered table-striped table-hover">
   <tr>
     <th>ID</th><th>Project</th><th>Est</th>
     <th>Start</th><th>End</th>
@@ -53,4 +54,5 @@
   </tr>
   {% endfor %}
 </table>
+</div>
 {% endblock %}

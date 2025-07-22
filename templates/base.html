@@ -15,13 +15,14 @@
           <li class="nav-item"><a class="nav-link" href="{{ url_for('view_resources') }}">Resources</a></li>
           <li class="nav-item"><a class="nav-link" href="{{ url_for('view_holidays') }}">Holidays</a></li>
           <li class="nav-item"><a class="nav-link" href="{{ url_for('view_timeoff') }}">TimeOff</a></li>
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('view_workitems') }}">WorkItems</a></li>
           <li class="nav-item"><a class="nav-link" href="{{ url_for('project_form') }}">New Project</a></li>
         </ul>
       </div>
     </div>
   </nav>
 
-  <div class="container mt-4">
+  <div class="container-fluid mt-4">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         <ul class="flashes">
