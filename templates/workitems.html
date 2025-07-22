@@ -45,11 +45,11 @@
     <td>{{ w.RemainingHours }}</td>
     <td>{{ w.Status }}</td>
     <td class="d-flex gap-1">
-      <a class="btn btn-sm btn-secondary" href="{{ url_for('edit_workitem', work_id=w.WorkId) }}">Edit</a>
-      <a class="btn btn-sm btn-info" href="{{ url_for('add_note', work_id=w.WorkId) }}">Note</a>
-      <a class="btn btn-sm btn-warning" href="{{ url_for('pause_workitem', work_id=w.WorkId) }}">Pause</a>
-      <a class="btn btn-sm btn-success" href="{{ url_for('complete_workitem', work_id=w.WorkId) }}">Complete</a>
-      <a class="btn btn-sm btn-danger" href="{{ url_for('delete_workitem', work_id=w.WorkId) }}" onclick="return confirm('Delete this item?');">Delete</a>
+      <a class="btn btn-sm btn-secondary" title="Edit" href="{{ url_for('edit_workitem', work_id=w.WorkId) }}"><i class="bi bi-pencil"></i></a>
+      <a class="btn btn-sm btn-info" title="Note" href="{{ url_for('add_note', work_id=w.WorkId) }}"><i class="bi bi-journal-text"></i></a>
+      <a class="btn btn-sm btn-warning" title="Pause" href="{{ url_for('pause_workitem', work_id=w.WorkId) }}"><i class="bi bi-pause"></i></a>
+      <a class="btn btn-sm btn-success" title="Complete" href="{{ url_for('complete_workitem', work_id=w.WorkId) }}"><i class="bi bi-check-circle"></i></a>
+      <a class="btn btn-sm btn-danger" title="Delete" href="{{ url_for('delete_workitem', work_id=w.WorkId) }}" onclick="return confirm('Delete this item?');"><i class="bi bi-trash"></i></a>
     </td>
   </tr>
   {% endfor %}

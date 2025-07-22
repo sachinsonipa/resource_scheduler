@@ -385,6 +385,34 @@ def add_note(work_id):
     return render_template('add_note.html', item=row)
 
 
+@app.route('/notes')
+def view_notes():
+    df = load_workitems()
+    df = df[df['Notes'].astype(str).str.strip() != '']
+    df_res = load_resources()[['ResourceId', 'ResourceName']]
+    df = df.merge(
+        df_res,
+        left_on='AssignedResource',
+        right_on='ResourceId',
+        how='left'
+    )
+    records = df.to_dict('records')
+    return render_template('notes.html', notes=records)
+
+
+@app.route('/delete_note/<int:work_id>')
+def delete_note(work_id):
+    df_wi = load_workitems()
+    if work_id in df_wi['WorkId'].values:
+        idx = df_wi.index[df_wi['WorkId'] == work_id][0]
+        df_wi.at[idx, 'Notes'] = ''
+        save_workitems(df_wi)
+        flash('Note deleted.', 'success')
+    else:
+        flash('WorkItem not found.', 'error')
+    return redirect(url_for('view_notes'))
+
+
 @app.route('/pause_workitem/<int:work_id>')
 def pause_workitem(work_id):
     df_wi = load_workitems()
