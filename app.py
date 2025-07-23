@@ -365,7 +365,6 @@ def edit_workitem(work_id):
 
     return render_template('edit_workitem.html', item=row)
 
-
 @app.route('/add_note/<int:work_id>', methods=['GET', 'POST'])
 def add_note(work_id):
     df_wi = load_workitems()

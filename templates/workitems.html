@@ -34,7 +34,7 @@
   <tr>
     <th>ID</th><th>Project</th><th>Est</th>
     <th>Start</th><th>End</th>
-    <th>Resource</th><th>Assigned At</th><th>Remaining</th><th>Status</th><th>Action</th>
+    <th>Resource</th><th>Assigned At</th><th>Remaining</th><th>Status</th><th>Notes</th><th>Action</th>
   </tr>
   {% for w in workitems %}
   <tr>
@@ -47,7 +47,17 @@
     <td>{{ w.AssignDatetime }}</td>
     <td>{{ w.RemainingHours }}</td>
     <td>{{ w.Status }}</td>
+    
+    <td>
+      <pre class="note-preview" onclick="this.classList.toggle('expanded')">{{ "—" if w.Notes != w.Notes or not w.Notes else w.Notes }}</pre>
+      <!-- Form to add new note -->
+      <form action="/add_note/{{ idx }}" class="d-flex mt-1" method="post">
+        <input class="form-control form-control-sm" name="new_note" placeholder="Add note" required style="width: 300px;">
+        <button class="btn btn-sm btn-outline-primary ms-1">➕</button>
+      </form>
+    </td>
     <td class="d-flex gap-1">
+    
       <a class="btn btn-sm btn-secondary" title="Edit" href="{{ url_for('edit_workitem', work_id=w.WorkId) }}"><i class="bi bi-pencil"></i></a>
       <a class="btn btn-sm btn-info" title="Note" href="{{ url_for('add_note', work_id=w.WorkId) }}"><i class="bi bi-journal-text"></i></a>
       <a class="btn btn-sm btn-warning" title="Pause" href="{{ url_for('pause_workitem', work_id=w.WorkId) }}"><i class="bi bi-pause"></i></a>
@@ -59,3 +69,12 @@
 </table>
 </div>
 {% endblock %}
+
+<script>
+function toggleNote(container) {
+  const preview = container.querySelector('.note-preview');
+  const full = container.querySelector('.note-full');
+  preview.classList.toggle('d-none');
+  full.classList.toggle('d-none');
+}
+</script>
