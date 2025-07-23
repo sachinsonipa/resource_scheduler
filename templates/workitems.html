@@ -51,7 +51,7 @@
     <td>
       <pre class="note-preview" onclick="this.classList.toggle('expanded')">{{ "—" if w.Notes != w.Notes or not w.Notes else w.Notes }}</pre>
       <!-- Form to add new note -->
-      <form action="/add_note/{{ idx }}" class="d-flex mt-1" method="post">
+      <form action="{{ url_for('add_note', work_id=w.WorkId) }}" class="d-flex mt-1" method="post">
         <input class="form-control form-control-sm" name="new_note" placeholder="Add note" required style="width: 300px;">
         <button class="btn btn-sm btn-outline-primary ms-1">➕</button>
       </form>
