@@ -390,44 +390,6 @@ def add_note(work_id):
     return render_template('add_note.html', item=row, notes=notes_list)
 
 
-@app.route('/notes')
-def view_notes():
-    df = load_workitems()
-    df = df[df['Notes'].astype(str).str.strip() != '']
-    df_res = load_resources()[['ResourceId', 'ResourceName']]
-    df = df.merge(
-        df_res,
-        left_on='AssignedResource',
-        right_on='ResourceId',
-        how='left'
-    )
-
-    notes_records = []
-    for _, row in df.iterrows():
-        for note in str(row.get('Notes', '')).splitlines():
-            note = note.strip()
-            if note:
-                notes_records.append({
-                    'WorkId': row['WorkId'],
-                    'ProjectName': row['ProjectName'],
-                    'ResourceName': row.get('ResourceName') or row['AssignedResource'],
-                    'Note': note
-                })
-
-    return render_template('notes.html', notes=notes_records)
-
-
-@app.route('/delete_note/<int:work_id>')
-def delete_note(work_id):
-    df_wi = load_workitems()
-    if work_id in df_wi['WorkId'].values:
-        idx = df_wi.index[df_wi['WorkId'] == work_id][0]
-        df_wi.at[idx, 'Notes'] = ''
-        save_workitems(df_wi)
-        flash('Note deleted.', 'success')
-    else:
-        flash('WorkItem not found.', 'error')
-    return redirect(url_for('view_notes'))
 
 
 @app.route('/pause_workitem/<int:work_id>')
@@ -508,12 +470,14 @@ def _render_workitems(status_filter=None):
         avail = available_hours(row['AssignedResource'], datetime.now(), row['ProjEnd'], df_res_all)
         return assess_status(avail, row['RemainingHours'])
 
-    df['Status'] = df.apply(_calc_status, axis=1)
+    if not df.empty:
+        df['Status'] = df.apply(_calc_status, axis=1)
 
     # format dates for display
-    df['ProjStart']      = df['ProjStart'].dt.strftime('%Y-%m-%d')
-    df['ProjEnd']        = df['ProjEnd'].dt.strftime('%Y-%m-%d')
-    df['AssignDatetime'] = df['AssignDatetime'].dt.strftime('%Y-%m-%d %H:%M')
+    if not df.empty:
+        df['ProjStart']      = df['ProjStart'].dt.strftime('%Y-%m-%d')
+        df['ProjEnd']        = df['ProjEnd'].dt.strftime('%Y-%m-%d')
+        df['AssignDatetime'] = df['AssignDatetime'].dt.strftime('%Y-%m-%d %H:%M')
 
     resources = df_res.to_dict('records')
     return render_template(
