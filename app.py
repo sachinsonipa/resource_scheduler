@@ -68,12 +68,17 @@ def load_timeoff():
         sheet_name='TimeOff',
         dtype={'ResourceId': str, 'TimeOffDate': object}
     )
+    # Some legacy files may carry extra columns (e.g. ``WorkingHrs``). Keep
+    # only the expected fields so later merges don't create suffixed column
+    # names that break selection.
+    df = df.loc[:, [c for c in ['ResourceId', 'TimeOffDate'] if c in df.columns]]
     if 'TimeOffDate' in df.columns:
         df['TimeOffDate'] = (
             pd.to_datetime(df['TimeOffDate'], errors='coerce')
               .dt.date
         )
-    return df.dropna(subset=['TimeOffDate'])
+        df = df.dropna(subset=['TimeOffDate'])
+    return df
 
 @app.route('/timeoff')
 def view_timeoff():
