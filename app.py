@@ -43,16 +43,22 @@ def ensure_files():
         df_wi.to_excel(WORKITEM_FILE, index=False)
 
 def load_resources():
-    """Read the Resource sheet with ResourceId as string."""
-    return pd.read_excel(
+    """Read the Resource sheet with ResourceId as string.
+
+    Some existing spreadsheets may lack the ``WorkingHrs`` column. Ensure it is
+    present and fill missing values with ``DEF_WORKING`` so callers can rely on
+    it.
+    """
+    df = pd.read_excel(
         RESOURCE_FILE,
         sheet_name='Resource',
-        dtype={'ResourceId': str, 'ResourceName': str,
-               'WorkingHrs': int}
+        dtype={'ResourceId': str, 'ResourceName': str},
     )
-
-
-
+    if 'WorkingHrs' not in df.columns:
+        df['WorkingHrs'] = DEF_WORKING
+    else:
+        df['WorkingHrs'] = df['WorkingHrs'].fillna(DEF_WORKING).astype(int)
+    return df
 # … your ensure_files(), load_resources(), load_holidays(), save_resources() etc.
 
 def load_timeoff():
