@@ -26,7 +26,7 @@ def ensure_files():
         df_res = pd.DataFrame(columns=[
             'ResourceId', 'ResourceName', 'WorkingHrs'
         ])
-        df_timeoff = pd.DataFrame(columns=['ResourceId', 'TimeOffDate'])
+        df_timeoff = pd.DataFrame(columns=['ResourceId', 'TimeOffDate', 'WorkingHrs'])
         df_hol = pd.DataFrame(columns=['HolidayDate'])
         with pd.ExcelWriter(RESOURCE_FILE, engine='openpyxl') as writer:
             df_res.to_excel(writer, sheet_name='Resource', index=False)
@@ -43,45 +43,99 @@ def ensure_files():
         df_wi.to_excel(WORKITEM_FILE, index=False)
 
 def load_resources():
-    """Read the Resource sheet with ResourceId as string."""
-    return pd.read_excel(
+    """Read the Resource sheet with ResourceId as string.
+
+    Some existing spreadsheets may lack the ``WorkingHrs`` column. Ensure it is
+    present and fill missing values with ``DEF_WORKING`` so callers can rely on
+    it.
+    """
+    df = pd.read_excel(
         RESOURCE_FILE,
         sheet_name='Resource',
-        dtype={'ResourceId': str, 'ResourceName': str,
-               'WorkingHrs': int}
+        dtype={'ResourceId': str, 'ResourceName': str},
     )
-
-
-
+    if 'WorkingHrs' not in df.columns:
+        df['WorkingHrs'] = DEF_WORKING
+    else:
+        df['WorkingHrs'] = df['WorkingHrs'].fillna(DEF_WORKING).astype(int)
+    return df
 # … your ensure_files(), load_resources(), load_holidays(), save_resources() etc.
 
 def load_timeoff():
-    """Return TimeOff DataFrame with ResourceId and TimeOffDate as date."""
+    """Return TimeOff DataFrame with normalized types.
+
+    ``WorkingHrs`` represents the number of working hours on the time‑off day
+    (defaulting to 0 meaning a full day off).
+    """
     df = pd.read_excel(
         RESOURCE_FILE,
         sheet_name='TimeOff',
-        dtype={'ResourceId': str, 'TimeOffDate': object}
+        dtype={'ResourceId': str, 'TimeOffDate': object, 'WorkingHrs': float}
     )
+    # Keep only known columns to avoid duplicate names when merging later on.
+    df = df.loc[:, [c for c in ['ResourceId', 'TimeOffDate', 'WorkingHrs'] if c in df.columns]]
+
     if 'TimeOffDate' in df.columns:
         df['TimeOffDate'] = (
             pd.to_datetime(df['TimeOffDate'], errors='coerce')
               .dt.date
         )
-    return df.dropna(subset=['TimeOffDate'])
+        df = df.dropna(subset=['TimeOffDate'])
+
+    if 'WorkingHrs' not in df.columns:
+        df['WorkingHrs'] = 0.0
+    else:
+        df['WorkingHrs'] = pd.to_numeric(df['WorkingHrs'], errors='coerce').fillna(0)
+
+    return df
 
 @app.route('/timeoff')
 def view_timeoff():
     df_timeoff = load_timeoff()
     df_res = load_resources()
-    # Merge to pull in ResourceName & WorkingHrs from the Resource sheet
+
+    today = datetime.today().date()
+    default_start = today.isoformat()
+    default_end = today.replace(month=12, day=31).isoformat()
+
+    resource_filter = request.args.get('resource', '').strip()
+    start = request.args.get('start', default_start).strip() or default_start
+    end = request.args.get('end', default_end).strip() or default_end
+
+    if resource_filter:
+        df_timeoff = df_timeoff[df_timeoff['ResourceId'] == resource_filter]
+
+    # Merge to pull in ResourceName from the Resource sheet
     df = df_timeoff.merge(
         df_res[['ResourceId', 'ResourceName']],
         on='ResourceId',
         how='left'
     )
     df = df[['ResourceId', 'ResourceName', 'WorkingHrs', 'TimeOffDate']]
-    records = df.sort_values(['ResourceId', 'TimeOffDate']).to_dict('records')
-    return render_template('timeoff.html', timeoff=records)
+    df = df.sort_values(['ResourceId', 'TimeOffDate'])
+
+    available = total = timeoff_hours = None
+    if resource_filter and start and end:
+        try:
+            start_dt = datetime.fromisoformat(start)
+            end_dt = datetime.fromisoformat(end)
+            available, total, timeoff_hours = compute_work_hours(
+                resource_filter, start_dt, end_dt, df_res
+            )
+        except ValueError:
+            flash('Invalid date range.', 'error')
+
+    return render_template(
+        'timeoff.html',
+        timeoff=df.to_dict('records'),
+        resources=df_res.to_dict('records'),
+        selected_resource=resource_filter,
+        start=start,
+        end=end,
+        available_hours=available,
+        total_hours=total,
+        timeoff_hours=timeoff_hours,
+    )
 
 @app.route('/add_timeoff', methods=['GET','POST'])
 def add_timeoff():
@@ -92,14 +146,26 @@ def add_timeoff():
     if request.method == 'POST':
         rid  = request.form['resource_id']
         date = request.form['timeoff_date']
+        work_val = request.form.get('working_hrs', '').strip()
+
         try:
             timeoff_date = datetime.fromisoformat(date).date()
         except Exception:
             flash("Invalid date format.", 'error')
             return redirect(url_for('add_timeoff'))
 
+        try:
+            work_hrs = float(work_val) if work_val else 0
+        except ValueError:
+            flash("Invalid working hours.", 'error')
+            return redirect(url_for('add_timeoff'))
+
         # append new TimeOff row
-        new = {'ResourceId': rid, 'TimeOffDate': timeoff_date}
+        new = {
+            'ResourceId': rid,
+            'TimeOffDate': timeoff_date,
+            'WorkingHrs': work_hrs
+        }
         df_timeoff = pd.concat([df_timeoff, pd.DataFrame([new])], ignore_index=True)
 
         # save back
@@ -151,28 +217,56 @@ def save_workitems(df_wi):
     """Overwrite the WorkItem.xlsx."""
     df_wi.to_excel(WORKITEM_FILE, index=False)
 
-def available_hours(resource_id, start_dt, end_dt, df_res):
+def compute_work_hours(resource_id, start_dt, end_dt, df_res):
     """
-    Sum available hours for a resource between two dates,
-    skipping TimeOff and holidays.
+    Calculate working hours for a resource between two datetimes.
+
+    Returns a tuple ``(available, total, timeoff)`` where:
+
+    * ``total``   – working hours for business days in the range, excluding
+      holidays.
+    * ``timeoff`` – working hours removed due to time‑off entries that fall on
+      those business days.
+    * ``available`` – the remaining hours after deducting ``timeoff`` from
+      ``total``.
     """
+
     timeoff_df = load_timeoff()
-    hols   = load_holidays()
-    row    = df_res.set_index('ResourceId').loc[resource_id]
-    workinghrs  = int(row['WorkingHrs'])
-    red = DEF_RED
+    hols = set(load_holidays())
+    row = df_res.set_index('ResourceId').loc[resource_id]
+    workinghrs = int(row['WorkingHrs'])
+
+    # Map of date -> minimum working hours remaining on that day
+    timeoff_map = (
+        timeoff_df[timeoff_df['ResourceId'] == resource_id]
+        .groupby('TimeOffDate')['WorkingHrs']
+        .min()
+        .to_dict()
+    )
 
     total = 0
-    curr  = start_dt.date()
-    end   = end_dt.date()
+    timeoff_hours = 0
+    curr = start_dt.date()
+    end = end_dt.date()
     while curr <= end:
-        if curr in hols or ((timeoff_df['ResourceId']==resource_id)
-                             & (timeoff_df['TimeOffDate']==curr)).any():
-            total += red
-        else:
+        # business day check
+        if curr.weekday() < 5 and curr not in hols:
             total += workinghrs
+            if curr in timeoff_map:
+                w = max(0, min(workinghrs, timeoff_map[curr]))
+                timeoff_hours += workinghrs - w
         curr += timedelta(days=1)
-    return total
+
+    available = total - timeoff_hours
+    return available, total, timeoff_hours
+
+
+def available_hours(resource_id, start_dt, end_dt, df_res):
+    """Backwards compatible helper returning only available hours."""
+    available, _total, _timeoff = compute_work_hours(
+        resource_id, start_dt, end_dt, df_res
+    )
+    return available
 
 def assess_status(avail, required):
     """

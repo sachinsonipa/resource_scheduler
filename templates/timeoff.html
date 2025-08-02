@@ -2,11 +2,42 @@
 {% block content %}
 <h2>TimeOff</h2>
 <a class="btn btn-primary mb-3" href="{{ url_for('add_timeoff') }}">Add TimeOff</a>
+
+<form method="get" class="row row-cols-lg-auto g-3 align-items-end mb-3">
+  <div class="col">
+    <select name="resource" class="form-select">
+      <option value="">All Resources</option>
+      {% for r in resources %}
+        <option value="{{ r.ResourceId }}" {% if selected_resource == r.ResourceId %}selected{% endif %}>
+          {{ r.ResourceId }} - {{ r.ResourceName }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col">
+    <input type="date" name="start" value="{{ start }}" class="form-control">
+  </div>
+  <div class="col">
+    <input type="date" name="end" value="{{ end }}" class="form-control">
+  </div>
+  <div class="col">
+    <button type="submit" class="btn btn-secondary">Filter</button>
+  </div>
+</form>
+
+{% if available_hours is not none %}
+<div class="mb-3">
+  <strong>Business Hours:</strong> {{ total_hours }} |
+  <strong>TimeOff Hours:</strong> {{ timeoff_hours }} |
+  <strong>Available Hours:</strong> {{ available_hours }}
+  </div>
+{% endif %}
+
 <table class="table table-bordered table-striped">
   <tr>
     <th>ResourceId</th>
     <th>Resource Name</th>
-    <th>WorkingHrs</th>
+    <th>Working Hours</th>
     <th>TimeOff Date</th>
   </tr>
   {% for p in timeoff %}
