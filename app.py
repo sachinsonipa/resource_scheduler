@@ -365,31 +365,24 @@ def edit_workitem(work_id):
 
     return render_template('edit_workitem.html', item=row)
 
-@app.route('/add_note/<int:work_id>', methods=['GET', 'POST'])
-def add_note(work_id):
+@app.route('/update_notes/<int:work_id>', methods=['POST'])
+def update_notes(work_id):
     df_wi = load_workitems()
     if work_id not in df_wi['WorkId'].values:
         flash('WorkItem not found.', 'error')
         return redirect(url_for('view_workitems'))
-
+    
     idx = df_wi.index[df_wi['WorkId'] == work_id][0]
-    row = df_wi.loc[idx]
 
-    if request.method == 'POST':
-        new_note = request.form.get('new_note', '').strip()
-        if new_note:
-            timestamp = datetime.now().strftime('%Y-%m-%d')
-            existing = str(df_wi.at[idx, 'Notes']).strip()
-            note_entry = f"{timestamp}: {new_note}"
-            df_wi.at[idx, 'Notes'] = (existing + '\n' + note_entry if existing else note_entry)
-            save_workitems(df_wi)
-            flash('Note added.', 'success')
-        return redirect(url_for('add_note', work_id=work_id))
-
-    notes_list = [n for n in str(row.get('Notes', '')).splitlines() if n.strip()]
-    return render_template('add_note.html', item=row, notes=notes_list)
-
-
+    new_note = request.form['new_note']
+    timestamp = datetime.now().strftime('%Y-%m-%d')
+    existing_notes = df_wi.at[idx, 'Notes']
+    new_entry = f"{timestamp}: {new_note}"
+    df_wi.at[idx, 'Notes'] = f"{existing_notes}\n{new_entry}" if pd.notna(existing_notes) and existing_notes else new_entry
+    
+    save_workitems(df_wi)
+    flash('Note added.', 'success')
+    return redirect(url_for('view_workitems'))
 
 
 @app.route('/pause_workitem/<int:work_id>')

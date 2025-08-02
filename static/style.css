@@ -46,4 +46,23 @@ ul.flashes {
 .flash.error   { background: #f8d7da; color: #721c24; }
 .flash.warning { background: #fff3cd; color: #856404; }
 .flash.success { background: #d4edda; color: #155724; }
+
+/* Utility */
+pre {
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+.note-preview {
+  max-height: 1.5em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+ 
+}
+.note-preview.expanded {
+  max-height: none; 
+  white-space: pre-wrap;
+}
+
   

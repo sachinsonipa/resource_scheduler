@@ -51,15 +51,14 @@
     <td>
       <pre class="note-preview" onclick="this.classList.toggle('expanded')">{{ "—" if w.Notes != w.Notes or not w.Notes else w.Notes }}</pre>
       <!-- Form to add new note -->
-      <form action="{{ url_for('add_note', work_id=w.WorkId) }}" class="d-flex mt-1" method="post">
-        <input class="form-control form-control-sm" name="new_note" placeholder="Add note" required style="width: 300px;">
+      <form action="{{ url_for('update_notes', work_id=w.WorkId) }}" class="d-flex mt-1" method="post">
+        <input class="form-control form-control-sm" name="new_note" placeholder="Add note" required style="width: 400px;">
         <button class="btn btn-sm btn-outline-primary ms-1">➕</button>
       </form>
     </td>
     <td class="d-flex gap-1">
     
       <a class="btn btn-sm btn-secondary" title="Edit" href="{{ url_for('edit_workitem', work_id=w.WorkId) }}"><i class="bi bi-pencil"></i></a>
-      <a class="btn btn-sm btn-info" title="Note" href="{{ url_for('add_note', work_id=w.WorkId) }}"><i class="bi bi-journal-text"></i></a>
       <a class="btn btn-sm btn-warning" title="Pause" href="{{ url_for('pause_workitem', work_id=w.WorkId) }}"><i class="bi bi-pause"></i></a>
       <a class="btn btn-sm btn-success" title="Complete" href="{{ url_for('complete_workitem', work_id=w.WorkId) }}"><i class="bi bi-check-circle"></i></a>
       <a class="btn btn-sm btn-danger" title="Delete" href="{{ url_for('delete_workitem', work_id=w.WorkId) }}" onclick="return confirm('Delete this item?');"><i class="bi bi-trash"></i></a>
